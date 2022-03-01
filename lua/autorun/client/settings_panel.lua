@@ -1,4 +1,4 @@
-
+print("YES")
 local allInfo = {}
 function CreateSettingsMenu()
 	local main = vgui.Create( "DFrame" )
