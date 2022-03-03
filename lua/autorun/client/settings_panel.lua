@@ -154,14 +154,7 @@ function CreateSettingsMenu()
 			for controlName, controlInfo in SortedPairs(nodeInfo["controls"]) do
 				local label = vgui.Create("DLabel", form)
 				label:SetText(controlName)
-<<<<<<< Updated upstream
-				label:SetTooltip(controlInfo["desc"])
-=======
-				if (controlInfo.panel and controlInfo["panel"]["desc"]) then label:SetTooltip(controlInfo["desc"]) end
-				
->>>>>>> Stashed changes
 				label:Dock(LEFT)
-				
 				
 				local item = nil
 				local control = vgui.Create("DPanel")
@@ -266,6 +259,7 @@ function CreateSettingsMenu()
 			end
 			searchForm:SetValue(search:GetValue())
 
+			
 			local resNode = vgui.Create("DButton", frame)
 			resNode:SetToolTip("Resets all settings within this node.")
 			resNode:SetText("Reset Node Settings")

@@ -39,12 +39,17 @@ for name, _ in pairs(synonyms) do
         net.Start("SettingsPanel")
         net.Send(ply)
     end)
+
+    concommand.Add("!"..name, function(ply)
+        net.Start("SettingsPanel")
+        net.Send(ply)
+    end)
 end
 
 
 hook.Add("PlayerSay", "settings_panel", function(sender, text, teamChat)
     if ("!"..tostring(synonyms[text])) then
-        sender:ConCommand("settings_panel")
+        sender:ConCommand("gsm")
         return ""
     end
 end)
