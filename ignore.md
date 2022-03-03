@@ -1,0 +1,1 @@
+"*.psd", "*.vcproj", "*.svn*", ".git/*", "*.md", "*.code-workspace", "*.gitattributes"
