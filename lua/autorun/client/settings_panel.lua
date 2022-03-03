@@ -154,7 +154,12 @@ function CreateSettingsMenu()
 			for controlName, controlInfo in SortedPairs(nodeInfo["controls"]) do
 				local label = vgui.Create("DLabel", form)
 				label:SetText(controlName)
+<<<<<<< Updated upstream
 				label:SetTooltip(controlInfo["desc"])
+=======
+				if (controlInfo.panel and controlInfo["panel"]["desc"]) then label:SetTooltip(controlInfo["desc"]) end
+				
+>>>>>>> Stashed changes
 				label:Dock(LEFT)
 				
 				
