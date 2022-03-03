@@ -1,4 +1,3 @@
-print("YES")
 local allInfo = {}
 function CreateSettingsMenu()
 	local main = vgui.Create( "DFrame" )
@@ -12,13 +11,92 @@ function CreateSettingsMenu()
 	main:MakePopup()
 	main:Center()
 
-	local DHoriz = vgui.Create("DHorizontalScroller", main)
-	DHoriz:SetSize(200,0)
-	DHoriz:Dock(LEFT)
+	local left = vgui.Create("DPanel", main)
+	left:SetSize(200, 0)
+	left:Dock(LEFT)
+
+	local trees = {}
+	local search = vgui.Create("DTextEntry",left)
+	search:SetSize(0, 20)
+	search:Dock(TOP)
+	search:SetPlaceholderText("Search...")
+	search:SetUpdateOnType(true)
+	local clearButton = nil
+	search.OnValueChange = function(self, value)
+		
+		if (value!="" and !clearButton) then
+			clearButton = vgui.Create("DImageButton", self)
+			clearButton:Dock(RIGHT)
+			clearButton:SetSize(20, 20)
+			clearButton:SetImage("icon16/cancel.png")
+			clearButton.DoClick = function(self)
+				search:SetValue("")
+				clearButton:Remove()
+				clearButton = nil
+			end
+		else
+			if (clear) then
+				clear:Remove()
+				clearButton = nil
+			end
+		end
+		local found = false
+		for k, tree in pairs(trees) do
+			nodeStack = util.Stack()
+			nodeStack:Push(tree:Root())
+			while (nodeStack:Size() > 0) do
+				local node = nodeStack:Pop()
+				--for k, string in pairs()
+				if (found==false and string.match(string.lower(node:GetText()), string.lower(value))) then
+					local showNode = node
+					while (showNode!=nil) do
+						showNode:SetVisible(true)
+						showNode:SetExpanded(true)
+						if (!showNode:IsRootNode()) then
+							showNode = showNode:GetParentNode()
+						else
+							showNode = nil
+						end
+					end
+				else
+					node:SetVisible(false)
+					node:SetExpanded(false)
+				end
+				
+				for k, nodeChild in pairs(node:GetChildNodes()) do
+					nodeStack:Push(nodeChild)
+				end
+			end
+		end
+		-- for k, tree in pairs(trees) do
+		-- 	node = tree:Root()
+		-- 	while (node:GetChildNodeCount() > 0) do
+		-- 		for k, node in pairs(node:GetChildNodes()) do
+		-- 			node:Hide()
+		-- 			node:SetExpanded(false)
+		-- 			if (string.match(node:GetText(), value)) then 
+		-- 				local node2 = node
+		-- 				while (node2!=nil) do --If we find a result, make the result's parent node tree visible
+		-- 					node2:Show()
+		-- 					node2:SetExpanded(true)
+		-- 					node2 = pcall(node2:GetParentNode()) or nil
+		-- 				end
+		-- 			end
+		-- 		end
+		-- 		node = node:GetChildNode(1)
+		-- 	end
+		-- end
+	end
+
+	local DHoriz = vgui.Create("DHorizontalScroller", left)
+	DHoriz:Dock(FILL)
 	DHoriz:SetOverlap( -4 )
 	
 
+	
+	
 	local tree = vgui.Create("DTree", DHoriz)
+	table.insert(trees, tree)
 	tree:Dock(FILL)
 	tree:SetSize(500,0)
 	tree.PaintOver = function(self, x, y)
@@ -35,6 +113,12 @@ function CreateSettingsMenu()
 		function node:CreateNodeSheet(nodeName, nodeInfo)
 			local frame = vgui.Create("DPanel", main)
 			frame.Paint = nil
+
+			local searchForm = vgui.Create("DTextEntry", frame)
+			searchForm:Dock(TOP)
+			searchForm:SetSize(0,20)
+			searchForm:SetPlaceholderText("Search...")
+			searchForm:SetUpdateOnType(true)
 		
 			local scroll = vgui.Create("DScrollPanel", frame)
 			scroll:Dock(FILL)
@@ -64,7 +148,8 @@ function CreateSettingsMenu()
 				end
 				form:AddItem(model)
 			end
-
+			
+			local formRows = {}
 			local nodeItems = {}
 			for controlName, controlInfo in SortedPairs(nodeInfo["controls"]) do
 				local label = vgui.Create("DLabel", form)
@@ -151,13 +236,31 @@ function CreateSettingsMenu()
 				resButton.DoClick = function()
 					item:SetValue(item.Default)
 				end
+				table.insert(formRows, {label, resButton, item})
 				form:AddItem(label, control)
 				
 				label:SetSize(200,0)
 				resButton:DockMargin(0, 0, 20, 0)
-
-				
 			end
+
+			searchForm.OnValueChange = function(self, value)
+				for k, row in pairs(formRows) do
+					local label = row[1]:GetText()
+					if (string.match(string.lower(label), string.lower(value))) then
+						for _, v in pairs(row) do
+							v:GetParent():SetVisible(true)
+						end
+					else
+						for _, v in pairs(row) do
+							v:GetParent():SetVisible(false)
+						end
+					end
+					form:InvalidateLayout()
+					form:SizeToChildren(false, true)
+				end
+			end
+			searchForm:SetValue(search:GetValue())
+
 			local resNode = vgui.Create("DButton", frame)
 			resNode:SetToolTip("Resets all settings within this node.")
 			resNode:SetText("Reset Node Settings")

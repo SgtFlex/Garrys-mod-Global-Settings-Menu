@@ -1,5 +1,3 @@
-print("test?")
-
 ConVar_Tbl = {}
 local addon_settings = file.Find("settings_panel_info/*", "LUA")
 for _, file in pairs(addon_settings) do
