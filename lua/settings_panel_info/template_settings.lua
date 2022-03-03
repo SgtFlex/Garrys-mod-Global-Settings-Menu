@@ -1,7 +1,4 @@
-AddCSLuaFile()
-
 return {
-    
     ["Entity 1"] = { --An example with all possible table values filled so you know what you can work with
         model = "models/combine_helicopter/helicopter_bomb01.mdl", --The model used for users to easily identify what they're modifying
         icon = "icon16/bomb.png", --The icon dispalyed for the node in the tree part of the menu
@@ -13,16 +10,16 @@ return {
                 panel = {type = "DNumberWang", min = 0, max = 100}
                 --The type of panel used for displaying this convar. The types supported are "DNumberWang", "DNumSlider", "DCheckBox", "DButton". 
                 --More will come in the future so check the changelog if you're looking for more
-            }
+            },
             ["Explode bomb!"] = {
                 panel = {type = "DButton", onclick = function(self)
                     print("Boom!")
                 end}
-            }
-        }
+            },
+        },
         subtree = {
             --This is where you would put more nodes that are the children of this node. If you had a node like Wildlife, then a Deer would fall under here (Since a deer is part of Wildlife)
-        }
+        },
     },
     ["Entity 2"] = {
         controls = {
@@ -48,8 +45,7 @@ return {
                     }
                 }
             },
-            
-        }
+        },
     },
 }
 --convar REQUIRED per control (except DButton)
