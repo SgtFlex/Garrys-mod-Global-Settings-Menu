@@ -27,13 +27,23 @@ end
 
 SetupDefaultConvars(ConVar_Tbl)
 
-concommand.Add("settings_panel", function(ply)
-    net.Start("SettingsPanel")
-    net.Send(ply)
-end)
+local synonyms = {
+    ["global_settings_menu"] = true,
+    ["global settings menu"] = true,
+    ["globalsettingsmenu"] = true,
+    ["gsm"] = true,
+}
+
+for name, _ in pairs(synonyms) do
+    concommand.Add(name, function(ply)
+        net.Start("SettingsPanel")
+        net.Send(ply)
+    end)
+end
+
 
 hook.Add("PlayerSay", "settings_panel", function(sender, text, teamChat)
-    if (text=="!settings_panel") then
+    if ("!"..tostring(synonyms[text])) then
         sender:ConCommand("settings_panel")
         return ""
     end
