@@ -21,6 +21,15 @@ function CreateSettingsMenu()
 	search:Dock(TOP)
 	search:SetPlaceholderText("Search...")
 	search:SetUpdateOnType(true)
+
+	local searchInfo = vgui.Create("DCheckBoxLabel", left)
+	searchInfo:SetSize(0, 20)
+	searchInfo:Dock(TOP)
+	searchInfo:SetText("+Search controls.")
+	searchInfo:SetToolTip("Also searches and displays the controls of a node that match the search.")
+	searchInfo:SetTextColor(Color(0,0,0,255))
+	searchInfo:SetValue(true)
+
 	local clearButton = nil
 	search.OnValueChange = function(self, value)
 		
