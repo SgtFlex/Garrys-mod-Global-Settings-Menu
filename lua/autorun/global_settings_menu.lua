@@ -16,7 +16,13 @@ function SetupDefaultConvars(tbl_nodes)
         if (node["controls"]!=nil) then
             for j, control in pairs(node["controls"]) do
                 if (control["convar"]!=nil and !ConVarExists(control["name"])) then
-                    CreateConVar(control["convar"], control["default"], bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), control["desc"])
+                    local min = control["panel"]["min"] or 0
+                    local max = control["panel"]["max"] or 99999999
+                    if control["client"]==false then
+                        CreateConVar(control["convar"], control["default"], bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), control["desc"], min, max)
+                    else
+                        CreateClientConVar(control["convar"], control["default"], true, false, control["desc"], min, max)
+                    end
                 end
             end
         end
