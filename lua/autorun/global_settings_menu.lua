@@ -15,7 +15,7 @@ function SetupDefaultConvars(tbl_nodes)
     for k, node in pairs(tbl_nodes) do
         if (node["controls"]!=nil) then
             for j, control in pairs(node["controls"]) do
-                if (control["convar"]!=nil) then
+                if (control["convar"]!=nil and !ConVarExists(control["name"])) then
                     CreateConVar(control["convar"], control["default"], bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), control["desc"])
                 end
             end
@@ -28,6 +28,25 @@ end
 
 SetupDefaultConvars(ConVar_Tbl)
 
+local synonyms = {
+    ["global_settings_menu"] = true,
+    ["global settings menu"] = true,
+    ["globalsettingsmenu"] = true,
+    ["gsm"] = true,
+}
+
+for name, _ in pairs(synonyms) do
+    concommand.Add(name, function(ply)
+        net.Start("SettingsPanel")
+        net.Send(ply)
+    end, nil, "Opens Global Settings Menu", bit.bor(FCVAR_REPLICATED))
+
+    concommand.Add("!"..name, function(ply)
+        net.Start("SettingsPanel")
+        net.Send(ply)
+    end, nil, "Opens Global Settings Menu", bit.bor(FCVAR_REPLICATED))
+end
+
 
 
 
@@ -35,30 +54,11 @@ SetupDefaultConvars(ConVar_Tbl)
 if SERVER then
     util.AddNetworkString("SettingsPanel")
     AddCSLuaFile("client/cl_init.lua")
-    
-        
-
-    local synonyms = {
-        ["global_settings_menu"] = true,
-        ["global settings menu"] = true,
-        ["globalsettingsmenu"] = true,
-        ["gsm"] = true,
-    }
-    
-    for name, _ in pairs(synonyms) do
-        concommand.Add(name, function(ply)
-            net.Start("SettingsPanel")
-            net.Send(ply)
-        end)
-    
-        concommand.Add("!"..name, function(ply)
-            net.Start("SettingsPanel")
-            net.Send(ply)
-        end)
-    end
 
     hook.Add("PlayerSay", "settings_panel", function(sender, text, teamChat)
-        if ("!"..tostring(synonyms[text])) then
+        if (string.StartWith(text, "!")==false) then return end
+        local t = string.sub(text, 2)
+        if (synonyms[t]==true) then
             sender:ConCommand("gsm")
             return ""
         end
