@@ -15,10 +15,10 @@ function SetupDefaultConvars(tbl_nodes)
     for k, node in pairs(tbl_nodes) do
         if (node["controls"]!=nil) then
             for j, control in pairs(node["controls"]) do
-                if (control["convar"]!=nil and !ConVarExists(control["name"])) then
-                    local min = control["panel"]["min"] or 0
-                    local max = control["panel"]["max"] or 99999999
-                    if control["client"]==false then
+                if (control["convar"]!=nil and !ConVarExists(control["convar"])) then
+                    local min = (control.panel and control["panel"]["min"]) or 0
+                    local max = (control.panel and control["panel"]["max"]) or 99999999
+                    if control["client"]!=true then
                         CreateConVar(control["convar"], control["default"], bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), control["desc"], min, max)
                     else
                         CreateClientConVar(control["convar"], control["default"], true, false, control["desc"], min, max)
@@ -41,16 +41,16 @@ local synonyms = {
     ["gsm"] = true,
 }
 
-for name, _ in pairs(synonyms) do
-    concommand.Add(name, function(ply)
-        net.Start("SettingsPanel")
-        net.Send(ply)
-    end, nil, "Opens Global Settings Menu", bit.bor(FCVAR_REPLICATED))
+if CLIENT then
+    for name, _ in pairs(synonyms) do
+        concommand.Add(name, function(ply)
+            CreateSettingsMenu()
+        end, nil, "Opens Global Settings Menu")
 
-    concommand.Add("!"..name, function(ply)
-        net.Start("SettingsPanel")
-        net.Send(ply)
-    end, nil, "Opens Global Settings Menu", bit.bor(FCVAR_REPLICATED))
+        concommand.Add("!"..name, function(ply)
+            CreateSettingsMenu()
+        end, nil, "Opens Global Settings Menu")
+    end
 end
 
 
@@ -58,12 +58,11 @@ end
 
 
 if SERVER then
-    util.AddNetworkString("SettingsPanel")
     AddCSLuaFile("client/cl_init.lua")
 
     hook.Add("PlayerSay", "settings_panel", function(sender, text, teamChat)
         if (string.StartWith(text, "!")==false) then return end
-        local t = string.sub(text, 2)
+        local t = string.lower(string.sub(text, 2))
         if (synonyms[t]==true) then
             sender:ConCommand("gsm")
             return ""

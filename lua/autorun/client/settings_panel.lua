@@ -30,6 +30,15 @@ function CreateSettingsMenu()
 	searchInfo:SetTextColor(Color(0,0,0,255))
 	searchInfo:SetValue(true)
 
+	local searchTags = vgui.Create("DCheckBoxLabel", left)
+	searchTags:SetSize(0, 20)
+	searchTags:Dock(TOP)
+	searchTags:SetText("+Search tags.")
+	searchTags:SetToolTip("Also searches the tags of nodes (and also control's tags if +Search Controls is enabled).")
+	searchTags:SetTextColor(Color(0,0,0,255))
+	searchTags:SetValue(true)
+	
+
 	local clearButton = nil
 	search.OnValueChange = function(self, value)
 		
@@ -49,14 +58,44 @@ function CreateSettingsMenu()
 				clearButton = nil
 			end
 		end
-		local found = false
+		local foundName = false
+		local foundTag = false
 		for k, tree in pairs(trees) do
 			nodeStack = util.Stack()
 			nodeStack:Push(tree:Root())
 			while (nodeStack:Size() > 0) do
 				local node = nodeStack:Pop()
-				--for k, string in pairs()
-				if (found==false and string.match(string.lower(node:GetText()), string.lower(value))) then
+				node.searchTerm = nil
+				if (string.match(string.lower(node:GetText()), string.lower(value))) then
+					foundName = true
+				elseif (foundName==false and searchTags:GetChecked()==true and node.tags!=nil) then
+					for k, v in pairs(node.tags) do
+						if (string.match(string.lower(v), string.lower(value))) then 
+							foundName = true
+							break 
+						end
+					end
+				end
+				if (foundName==false and searchInfo:GetChecked()==true and node.controls!=nil) then --If we name didn't match, then search the tags of the node
+					for k, v in pairs(node.controls) do
+						local desc = v["desc"] or ""
+						if (string.match(string.lower(k..desc), string.lower(value))) then 
+							foundTag = true
+							node.searchTerm = value
+							break
+						end
+						if (v.tags and searchTags:GetChecked()==true) then
+							for i, j in pairs(v.tags) do --search the tags of each control
+								if (string.match(string.lower(j), string.lower(value))) then 
+									foundTag = true
+									node.searchTerm = value
+									break
+								end
+							end
+						end
+					end
+				end
+				if (foundName==true or foundTag==true) then
 					local showNode = node
 					while (showNode!=nil) do
 						showNode:SetVisible(true)
@@ -67,6 +106,8 @@ function CreateSettingsMenu()
 							showNode = nil
 						end
 					end
+					foundName = false
+					foundTag = false
 				else
 					node:SetVisible(false)
 					node:SetExpanded(false)
@@ -77,32 +118,18 @@ function CreateSettingsMenu()
 				end
 			end
 		end
-		-- for k, tree in pairs(trees) do
-		-- 	node = tree:Root()
-		-- 	while (node:GetChildNodeCount() > 0) do
-		-- 		for k, node in pairs(node:GetChildNodes()) do
-		-- 			node:Hide()
-		-- 			node:SetExpanded(false)
-		-- 			if (string.match(node:GetText(), value)) then 
-		-- 				local node2 = node
-		-- 				while (node2!=nil) do --If we find a result, make the result's parent node tree visible
-		-- 					node2:Show()
-		-- 					node2:SetExpanded(true)
-		-- 					node2 = pcall(node2:GetParentNode()) or nil
-		-- 				end
-		-- 			end
-		-- 		end
-		-- 		node = node:GetChildNode(1)
-		-- 	end
-		-- end
+	end
+
+	searchInfo.OnChange = function()
+		search.OnValueChange(self, search:GetValue())
+	end
+	searchTags.OnChange = function()
+		search.OnValueChange(self, search:GetValue())
 	end
 
 	local DHoriz = vgui.Create("DHorizontalScroller", left)
 	DHoriz:Dock(FILL)
 	DHoriz:SetOverlap( -4 )
-	
-
-	
 	
 	local tree = vgui.Create("DTree", DHoriz)
 	table.insert(trees, tree)
@@ -113,13 +140,16 @@ function CreateSettingsMenu()
 	end
 	DHoriz:AddPanel(tree)
 
-
-
 	function tree:CreateNode(nodeName, nodeInfo)
 		local node = self:AddNode(nodeName)
+		if (nodeInfo.controls) then node.controls = nodeInfo["controls"] end
+		if (nodeInfo.tags) then node.tags = nodeInfo["tags"] end
 		node.CreateNode = self.CreateNode
+		
+		
 
 		function node:CreateNodeSheet(nodeName, nodeInfo)
+			
 			local frame = vgui.Create("DPanel", main)
 			frame.Paint = nil
 
@@ -128,6 +158,7 @@ function CreateSettingsMenu()
 			searchForm:SetSize(0,20)
 			searchForm:SetPlaceholderText("Search...")
 			searchForm:SetUpdateOnType(true)
+			
 		
 			local scroll = vgui.Create("DScrollPanel", frame)
 			scroll:Dock(FILL)
@@ -164,6 +195,7 @@ function CreateSettingsMenu()
 				local label = vgui.Create("DLabel", form)
 				label:SetText(controlName)
 				label:Dock(LEFT)
+				if (controlInfo["desc"]) then label:SetToolTip(controlInfo["desc"]) end
 				
 				local item = nil
 				local control = vgui.Create("DPanel")
@@ -217,56 +249,64 @@ function CreateSettingsMenu()
 					end
 					item:Dock(LEFT)
 				else
-					item = vgui.Create("DNumberWang", control)
-					local min = (controlInfo.panel and controlInfo["panel"]["min"]) or 0
-					local max = (controlInfo.panel and controlInfo["panel"]["max"]) or 9999999
-					item:SetMin(min)
-					item:SetMax(max)
-					item:SetValue(GetConVar(controlInfo["convar"]):GetFloat())
-					item:SetConVar(controlInfo["convar"])
-					item:Dock(LEFT)
+					if (pcall(function() item = vgui.Create(controlInfo.panel.type, control) end)==false) then
+						item:Dock(LEFT)
+						item.OnValueChanged = controlInfo.ExtraOnValueChanged
+					end
 				end
 				item:SetZPos(2)
-				
+				if (controlInfo.ExtraOnValueChange) then controlInfo.ExtraOnValueChange() end
 				
 				table.insert(nodeItems, item)
 				item.Default = controlInfo["default"]
-				if (controlInfo.panel and controlInfo["panel"]["desc"]) then item:SetTooltip(controlInfo["desc"]) end
+				if (controlInfo["desc"]) then item:SetTooltip(controlInfo["desc"]) end
 				
-				local resButton = vgui.Create("DButton", control)
-				resButton:SetZPos(1)
-				resButton:Dock(LEFT)
-				
-				resButton:SetSize(16,16)
-				resButton:SetIcon("icon16/arrow_rotate_clockwise.png")
-				resButton:SetToolTip("Resets this setting to default.")
-				resButton.DoClick = function()
-					item:SetValue(item.Default)
+				if (controlInfo.default) then
+					local resButton = vgui.Create("DButton", control)
+					resButton:SetZPos(1)
+					resButton:Dock(LEFT)
+					resButton:SetSize(16,16)
+					resButton:SetIcon("icon16/arrow_rotate_clockwise.png")
+					resButton:SetToolTip("Resets this setting to default.")
+					resButton.DoClick = function()
+						item:SetValue(item.Default)
+					end
+					resButton:DockMargin(0, 0, 20, 0)
 				end
-				table.insert(formRows, {label, resButton, item})
+				table.insert(formRows, {label, resButton, item, controlInfo["tags"]})
+				
 				form:AddItem(label, control)
+				item:GetParent():SizeToChildren(false, true)
 				
 				label:SetSize(200,0)
-				resButton:DockMargin(0, 0, 20, 0)
+				
 			end
 
 			searchForm.OnValueChange = function(self, value)
+				local found = false
 				for k, row in pairs(formRows) do
+					found = false
 					local label = row[1]:GetText()
 					if (string.match(string.lower(label), string.lower(value))) then
-						for _, v in pairs(row) do
-							v:GetParent():SetVisible(true)
+						found = true
+					elseif (searchTags:GetChecked()==true and row[4]!=nil) then
+						for i, j in pairs(row[4]) do
+							if (string.match(string.lower(j), string.lower(value))) then
+								found = true
+								break
+							end
 						end
 					else
-						for _, v in pairs(row) do
-							v:GetParent():SetVisible(false)
-						end
+						found = false
 					end
-					form:InvalidateLayout()
-					form:SizeToChildren(false, true)
+					row[1]:GetParent():SetVisible(found)
 				end
+				form:InvalidateLayout()
+				form:SizeToChildren(false, true)
 			end
-			searchForm:SetValue(search:GetValue())
+			if (self.searchTerm) then
+				searchForm:SetValue(self.searchTerm)
+			end
 
 			
 			local resNode = vgui.Create("DButton", frame)
@@ -278,14 +318,6 @@ function CreateSettingsMenu()
 					item:SetValue(item.Default)
 				end
 			end
-			-- local button = vgui.Create("DButton", frame)
-			-- button:Dock(BOTTOM)
-			-- button:SetText("Reset Equipment Settings")
-			-- button.DoClick = function()
-			-- 	for _, convar in pairs(tbl_controls) do
-			-- 		LocalPlayer():ConCommand(controlInfo["convar"].." "..controlInfo["default"])
-			-- 	end
-			-- end
 		
 			return frame
 		end
@@ -297,7 +329,7 @@ function CreateSettingsMenu()
 		elseif (nodeInfo["controls"]!=nil) then
 			node:SetIcon("icon16/bullet_go.png")			
 		end
-		node.DoClick = function()
+		node.DoClick = function(self)
 			if (nodeInfo["controls"]!=nil) then
 				if !IsValid(sheet) then
 					sheet = vgui.Create("DPropertySheet", main)
@@ -327,33 +359,31 @@ function CreateSettingsMenu()
 		node.DoRightClick = function(self)
 			self:ExpandRecurse(!node.Expanded)
 		end
+		node.children = {}
 		if (nodeInfo["subtree"]!=nil) then
 			for nodeName, nodeInfo in SortedPairs(nodeInfo["subtree"]) do
-				node:CreateNode(nodeName, nodeInfo) --Get the subtree of this node and run this again
+				node.children[nodeName] = node:CreateNode(nodeName, nodeInfo) --Get the subtree of this node and run this again
+				-- node.children.parent = node
 			end
 		end
+		node.labDesc = {}
+		if (nodeInfo["controls"]!=nil) then
+			for name, control in pairs(nodeInfo["controls"]) do
+				local a = string.lower(name)
+				local b = (control.desc and string.lower(" "..control["desc"])) or ""
+				node.labDesc[a..b]=true
+			end
+		end
+		
 
 		return node
 	end
-    
-
-
 
 	local sheet = nil
 	for nodeName, nodeInfo in SortedPairs(ConVar_Tbl) do
 		tree:CreateNode(nodeName, nodeInfo)
 	end
 
-	-- local resetAll = vgui.Create("DButton", main)
-	-- resetAll:Dock(BOTTOM)
-	-- resetAll:SetText("Reset ALL Settings")
-	-- resetAll.DoClick = function()
-	-- 	for tbl_name, tbl_controls in pairs(allInfo) do
-	-- 		for _, convar in pairs(tbl_controls) do
-	-- 			LocalPlayer():ConCommand(convar["convar"].." "..convar["default"])
-	-- 		end
-	-- 	end
-	-- end
 end
 
 
@@ -363,11 +393,5 @@ end
 function allInfo:AddControls(tbl)
 	table.insert(allInfo, tbl)
 end
-
-
-
-net.Receive("SettingsPanel", function()
-    CreateSettingsMenu()
-end)
 
 return allInfo
