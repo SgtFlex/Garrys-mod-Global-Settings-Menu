@@ -4,11 +4,11 @@ for _, file in pairs(addon_settings) do
     AddCSLuaFile("settings_panel_info/"..file)
     local fileName = string.sub(file, 1, -5)
     fileName = string.Replace(fileName, "_", " ")
-    ConVar_Tbl[fileName] = {
-        subtree = include("settings_panel_info/"..file),
-    }
+    local tbl = include("settings_panel_info/"..file)
+    local name = tbl.name or fileName
+    ConVar_Tbl[name] = tbl
 end
-
+PrintTable(ConVar_Tbl)
 
 --Keep in shared I think..
 function SetupDefaultConvars(tbl_nodes)

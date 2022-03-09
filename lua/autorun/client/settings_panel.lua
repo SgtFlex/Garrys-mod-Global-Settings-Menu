@@ -287,7 +287,7 @@ function CreateSettingsMenu()
 				for k, row in pairs(formRows) do
 					found = false
 					local label = row[1]:GetText()
-					if (string.match(string.lower(label), string.lower(value))) then
+					if (string.match(string.lower(label..row[1]:GetTooltip()), string.lower(value))) then
 						found = true
 					elseif (searchTags:GetChecked()==true and row[4]!=nil) then
 						for i, j in pairs(row[4]) do
@@ -378,12 +378,10 @@ function CreateSettingsMenu()
 
 		return node
 	end
-
 	local sheet = nil
 	for nodeName, nodeInfo in SortedPairs(ConVar_Tbl) do
 		tree:CreateNode(nodeName, nodeInfo)
 	end
-
 end
 
 
