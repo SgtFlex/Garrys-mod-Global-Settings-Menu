@@ -1,8 +1,17 @@
 local allInfo = {}
-function CreateSettingsMenu()
-	local main = vgui.Create( "DFrame" )
+local main = nil
+local search = nil
+function CreateSettingsMenu(searchText)
+	if main and main:IsValid() then 
+		main:Show()
+		if searchText then
+			search:SetValue(searchText)
+		end
+		return 
+	end
+	main = vgui.Create( "DFrame" )
 	main:SetSize(700, 700)
-	main:DockPadding(20, 40, 20, 20)
+	main:DockPadding(10, 30, 10, 10)
 	main:SetSizable(true)
 	main:SetTitle( "Flex's Settings Panel" ) 
 	main:SetVisible( true ) 
@@ -10,13 +19,42 @@ function CreateSettingsMenu()
 	main:ShowCloseButton( true ) 
 	main:MakePopup()
 	main:Center()
+	main.btnMinim:SetDisabled(false)
+	function main.btnMinim:DoClick()
+		main:Hide()
+	end
 
-	local left = vgui.Create("DPanel", main)
+	main.btnMaxim:SetDisabled(false)
+	function main.btnMaxim:DoClick()
+		main:SetSize(ScrW(), ScrH())
+		main:Center()
+	end
+
+	-- function main:OnCursorEntered()
+	-- 	main:KillFocus()
+	-- 	print("entered")
+	-- end
+
+	-- function main:OnCursorExited()
+	-- 	main:KillFocus()
+	-- 	print("exited")
+	-- end
+
+
+	local left = vgui.Create("DFrame", main)
 	left:SetSize(200, 0)
 	left:Dock(LEFT)
+	left:SetSizable(true)
+	left:SetDraggable(false)
+	left:ShowCloseButton(false)
+	function left:Paint(w, h)
+		surface.SetDrawColor(200,200,200,255)
+		surface.DrawRect(0, 0, w, h)
+	end
+	left:SetTitle("Settings Navigation")
 
 	local trees = {}
-	local search = vgui.Create("DTextEntry",left)
+	search = vgui.Create("DTextEntry",left)
 	search:SetSize(0, 20)
 	search:Dock(TOP)
 	search:SetPlaceholderText("Search...")
@@ -28,7 +66,7 @@ function CreateSettingsMenu()
 	searchInfo:SetText("+Search controls.")
 	searchInfo:SetToolTip("Also searches and displays the controls of a node that match the search.")
 	searchInfo:SetTextColor(Color(0,0,0,255))
-	searchInfo:SetValue(true)
+	searchInfo:SetConVar("gsm_search_controls")
 
 	local searchTags = vgui.Create("DCheckBoxLabel", left)
 	searchTags:SetSize(0, 20)
@@ -36,27 +74,28 @@ function CreateSettingsMenu()
 	searchTags:SetText("+Search tags.")
 	searchTags:SetToolTip("Also searches the tags of nodes (and also control's tags if +Search Controls is enabled).")
 	searchTags:SetTextColor(Color(0,0,0,255))
-	searchTags:SetValue(true)
+	searchTags:SetConVar("gsm_search_tags")
 	
-
+	
 	local clearButton = nil
 	search.OnValueChange = function(self, value)
 		
-		if (value!="" and !clearButton) then
-			clearButton = vgui.Create("DImageButton", self)
-			clearButton:Dock(RIGHT)
-			clearButton:SetSize(20, 20)
-			clearButton:SetImage("icon16/cancel.png")
-			clearButton.DoClick = function(self)
-				search:SetValue("")
-				clearButton:Remove()
-				clearButton = nil
+		if (value != "") then
+			if not clearButton then
+				clearButton = vgui.Create("DImageButton", self)
+				clearButton:Dock(RIGHT)
+				clearButton:SetSize(20, 20)
+				clearButton:SetImage("icon16/cancel.png")
+
+				function clearButton:DoClick()
+					search:SetValue("")
+					self:Remove()
+					self = nil
+				end
 			end
-		else
-			if (clear) then
-				clear:Remove()
-				clearButton = nil
-			end
+		elseif clearButton and clearButton:IsValid() then
+			clearButton:Remove()
+			clearButton = nil
 		end
 		local foundName = false
 		local foundTag = false
@@ -66,7 +105,10 @@ function CreateSettingsMenu()
 			while (nodeStack:Size() > 0) do
 				local node = nodeStack:Pop()
 				node.searchTerm = nil
-				if (string.match(string.lower(node:GetText()), string.lower(value))) then
+				if (string.lower(node:GetText()) == string.lower(value)) then
+					node:DoClick()
+					foundName = true
+				elseif (string.match(string.lower(node:GetText()), string.lower(value))) then
 					foundName = true
 				elseif (foundName==false and searchTags:GetChecked()==true and node.tags!=nil) then
 					for k, v in pairs(node.tags) do
@@ -119,13 +161,75 @@ function CreateSettingsMenu()
 			end
 		end
 	end
-
+	
 	searchInfo.OnChange = function()
-		search.OnValueChange(self, search:GetValue())
+		if search:GetValue()!="" then
+			search.OnValueChange(self, search:GetValue())
+		end
 	end
 	searchTags.OnChange = function()
-		search.OnValueChange(self, search:GetValue())
+		if search:GetValue()!="" then
+			search.OnValueChange(self, search:GetValue())
+		end
 	end
+
+	if searchText then 
+		search:SetValue(searchText) 
+	end
+
+	local contain1 = vgui.Create("DPanel", left)
+	contain1:Dock(TOP)
+	contain1:SetSize(0, 20)
+
+	local collapseB = vgui.Create("DButton", contain1)
+	collapseB:Dock(LEFT)
+	collapseB:SetWide(100)
+	collapseB:SetText("Collapse All")
+
+	function collapseB:DoClick()
+		for k, tree in pairs(trees) do
+			nodeStack = util.Stack()
+			nodeStack:Push(tree:Root())
+			while (nodeStack:Size() > 0) do
+				local node = nodeStack:Pop()
+
+				---Do things with node
+				if (tree:Root() != node) then
+					node:SetExpanded(false)
+				end
+
+				---end node code
+				for k, nodeChild in pairs(node:GetChildNodes()) do
+					nodeStack:Push(nodeChild)
+				end
+			end
+		end
+	end
+
+	local expandB = vgui.Create("DButton", contain1)
+	expandB:Dock(RIGHT)
+	expandB:SetWide(100)
+	expandB:SetText("Expand All")
+
+	function expandB:DoClick()
+		for k, tree in pairs(trees) do
+			nodeStack = util.Stack()
+			nodeStack:Push(tree:Root())
+			while (nodeStack:Size() > 0) do
+				local node = nodeStack:Pop()
+
+				---Do things with node
+				node:SetExpanded(true)
+
+				---end node code
+				for k, nodeChild in pairs(node:GetChildNodes()) do
+					nodeStack:Push(nodeChild)
+				end
+			end
+		end
+	end
+
+
 
 	local DHoriz = vgui.Create("DHorizontalScroller", left)
 	DHoriz:Dock(FILL)
@@ -139,6 +243,9 @@ function CreateSettingsMenu()
 		self:SizeToChildren()
 	end
 	DHoriz:AddPanel(tree)
+
+	tree:GetVBar():Dock(LEFT)
+	tree:GetCanvas():DockPadding(15, 0, 0, 0)
 
 	function tree:CreateNode(nodeName, nodeInfo)
 		local node = self:AddNode(nodeName)
@@ -162,6 +269,7 @@ function CreateSettingsMenu()
 		
 			local scroll = vgui.Create("DScrollPanel", frame)
 			scroll:Dock(FILL)
+
 		
 			local form = vgui.Create("DForm", scroll)
 			form:Dock(TOP)
@@ -191,7 +299,14 @@ function CreateSettingsMenu()
 			
 			local formRows = {}
 			local nodeItems = {}
+			local changeTypes = {
+				["OnChange"] = true,
+				["OnValueChange"] = true,
+				["OnValueChanged"] = true,
+			}
+			local alt = true
 			for controlName, controlInfo in SortedPairs(nodeInfo["controls"]) do
+				alt = !alt
 				local label = vgui.Create("DLabel", form)
 				label:SetText(controlName)
 				label:Dock(LEFT)
@@ -201,59 +316,131 @@ function CreateSettingsMenu()
 				local control = vgui.Create("DPanel")
 				control:Dock(FILL)
 				control.Paint = nil
+				
+				local panelT = ((controlInfo.panel and controlInfo.panel.type) or "DNumberWang")
+				item = vgui.Create(panelT)
+				item:SetParent(control)
+				item:Dock(LEFT)
+				local resButton = nil
+				if (controlInfo.default) then
+					resButton = vgui.Create("DButton", control)
+					resButton:SetZPos(1)
+					resButton:Dock(LEFT)
+					resButton:SetSize(16,16)
+					resButton:SetIcon("icon16/arrow_rotate_clockwise.png")
+					resButton:SetToolTip("Resets this setting to default.")
+					resButton.m_Image:Dock(FILL)
+					resButton:DockMargin(0, 0, 20, 0)
 
-				if (!controlInfo.panel or controlInfo["panel"]["type"]=="DNumberWang") then --Create a DNumberWang by default
-					item = vgui.Create("DNumberWang", control)
-					local min = (controlInfo.panel and controlInfo["panel"]["min"]) or 0
-					local max = (controlInfo.panel and controlInfo["panel"]["max"]) or 9999999
-					item:SetMin(min)
-					item:SetMax(max)
-					item:SetValue(GetConVar(controlInfo["convar"]):GetFloat())
-					item:SetConVar(controlInfo["convar"])
-					item:Dock(LEFT)
-				elseif (controlInfo["panel"]["type"]=="DNumberSlider") then
-					local min = (controlInfo.panel and controlInfo["panel"]["min"]) or 0
-					local max = (controlInfo.panel and controlInfo["panel"]["max"]) or 9999999
-					item = vgui.Create("DNumSlider", control)
-					item:SetDecimals(0)
-					item:SetMin(min)
-					item:SetMax(max)
-					item:SetSize(200,0)
-					--item:SetValue(GetConVar(controlInfo["convar"]):GetFloat())
-					item:SetConVar(controlInfo["convar"])
-					item:GetTextArea():Dock(LEFT)
-					item:Dock(FILL)
-				elseif (controlInfo["panel"]["type"]=="DCheckBox") then
-					item = vgui.Create("DCheckBox", control)
-					item:SetValue(GetConVar(controlInfo["convar"]):GetBool())
-					item:SetConVar(controlInfo["convar"])
-					item.DoClick = function()
-						item:Toggle()
+					
+
+					local usable = true
+					function resButton:SetUsable(bool)
+						if (bool==true) then
+							usable = true
+							self:SetMouseInputEnabled(true)
+						else
+							usable = false
+							self:SetMouseInputEnabled(false)
+						end
 					end
-					item:Dock(LEFT)
-				elseif (controlInfo["panel"]["type"]=="DComboBox") then
-					item = vgui.Create("DComboBox", control)
-					item:SetValue(GetConVar(controlInfo["convar"]):GetString())
-					for k, v in pairs(controlInfo["panel"]["options"]) do
-						item:AddChoice(k, v)
+
+					function resButton:GetUsable()
+						return usable
 					end
-					item.OnSelect = function(index, value, data)
-						LocalPlayer():ConCommand(controlInfo["convar"].." "..data)
+
+					function resButton:Paint(w, h)
+						local vis = nil
+						if (resButton:GetUsable()==true) then
+							vis = 255
+						else
+							vis = 75
+						end
+						draw.RoundedBox(3.5, 0, 0, w, h, Color(255, 255, 255, vis))
 					end
-					item:Dock(FILL)
-				elseif (controlInfo["panel"]["type"]=="DButton") then
-					item = vgui.Create("DButton", control)
-					item:SetText(controlName)
-					if (controlInfo["panel"]["onclick"]!=nil) then
-						item.DoClick = controlInfo["panel"]["onclick"]
+
+					function resButton:DoClick()
+						item:SetValue(item.Default)
+						self:SetUsable(false)
 					end
-					item:Dock(LEFT)
-				else
-					if (pcall(function() item = vgui.Create(controlInfo.panel.type, control) end)==false) then
-						item:Dock(LEFT)
-						item.OnValueChanged = controlInfo.ExtraOnValueChanged
+
+				end
+				
+				local adjustments = {
+					-- DNumSlider is composed of 4 different Derma elements: DLabel, DNumberScratch, DSlider, and DTextEntry
+					-- I like the makeup of DNumSlider, it just needs some adjustments to work within a DForm properly
+					["DNumSlider"] = function(panel)
+						panel:SetSize(500, 0)
+						panel:Dock(FILL) 
+						
+						panel:GetTextArea():SetSize(30, 0)
+						panel:GetTextArea():Dock(LEFT)
+						panel.Scratch:SetImageVisible(true)
+						panel.Scratch:SetSize(50, 0)
+						panel.Scratch:Dock(LEFT)
+						panel.Slider:SetSize(150, 0)
+						panel.Slider:Dock(LEFT)
+						panel.Label:SetVisible(true) --For some reason controls the number scratch
+						panel.Label:Dock(LEFT)
+						panel:SetMin((controlInfo.panel and controlInfo.panel.min) or 0)
+						panel:SetMax((controlInfo.panel and controlInfo.panel.max) or 100)
+						panel:SetDecimals((controlInfo.panel and controlInfo.panel.decimals) or 0)
+						
+					end,
+					["DNumberWang"] = function(panel)
+						panel:SetMin((controlInfo.panel and controlInfo.panel.min) or 0)
+						panel:SetMax((controlInfo.panel and controlInfo.panel.max) or 1000000)
+						local _, fraction = math.modf(controlInfo.default)
+						local count = math.max(0, #tostring(fraction) - 2)
+						local decimals = (controlInfo.panel and controlInfo.panel.decimals) or count or 0
+						panel:SetDecimals(decimals)
+						panel:SetInterval(1/10^(decimals))
+					end,
+					["DButton"] = function(panel)
+						panel:SetText(controlName)
+					end
+				}
+				
+				
+
+				if (adjustments[panelT]) then adjustments[panelT](item) end --Uses adjustments per panel type. Essentially a switch statement
+				
+				if (controlInfo.convar) then 
+					item:SetValue(GetConVar(controlInfo.convar):GetFloat())
+					item:SetConVar(controlInfo.convar) 
+				end
+				if (controlInfo.default and (item:GetValue() == controlInfo.default or (item.GetChecked and (item:GetChecked() and 1 or 0) == controlInfo.default))) then resButton:SetUsable(false) end
+				if (controlInfo.panel) then
+					for k, v in pairs(controlInfo.panel) do --If things like OnChange or OnValueChange are provided, change it to the value provided
+						
+						if (controlInfo.convar and changeTypes[k]==true) then
+							cvars.AddChangeCallback(controlInfo.convar, controlInfo.OnChange)
+						else
+							item[k] = v
+						end
 					end
 				end
+
+				for k, v in pairs(changeTypes) do
+					if resButton and item[k] then
+						item[k] = function(self, value)
+							local decimals = (controlInfo.panel and controlInfo.panel.decimals) or 0
+							if (isbool(value)) then value = (value and 1) or 0 end
+							if (math.Round(value, decimals) != controlInfo.default) then
+								resButton:SetUsable(true)
+							else
+								resButton:SetUsable(false)
+							end
+						end
+					end
+				end
+
+				if (controlInfo.convar and controlInfo.OnChange) then
+					cvars.AddChangeCallback(controlInfo.convar, controlInfo.OnChange)
+				end
+
+				if (controlInfo.panel and controlInfo.panel.extra) then controlInfo.panel.extra(item) end
+
 				item:SetZPos(2)
 				if (controlInfo.ExtraOnValueChange) then controlInfo.ExtraOnValueChange() end
 				
@@ -261,28 +448,51 @@ function CreateSettingsMenu()
 				item.Default = controlInfo["default"]
 				if (controlInfo["desc"]) then item:SetTooltip(controlInfo["desc"]) end
 				
-				if (controlInfo.default) then
-					local resButton = vgui.Create("DButton", control)
-					resButton:SetZPos(1)
-					resButton:Dock(LEFT)
-					resButton:SetSize(16,16)
-					resButton:SetIcon("icon16/arrow_rotate_clockwise.png")
-					resButton:SetToolTip("Resets this setting to default.")
-					resButton.DoClick = function()
-						item:SetValue(item.Default)
-					end
-					resButton:DockMargin(0, 0, 20, 0)
-				end
+				
 				table.insert(formRows, {label, resButton, item, controlInfo["tags"]})
 				
 				form:AddItem(label, control)
-				item:GetParent():SizeToChildren(false, true)
+				local p = item:GetParent():GetParent()
+				p:DockPadding(5, 5, 5, 5)
+				p:DockMargin(5, 0, 5, 0)
+				p:SizeToChildren(false, true)
+				p.paintAlt = alt
+				function p:Paint(w, h)
+					if self.paintAlt==true then
+						surface.SetDrawColor(255,255,255,10)
+						surface.DrawRect(0, 0, w, h)
+					end
+				end
+
 				
+
 				label:SetSize(200,0)
 				
 			end
 
+
+			local clearForm = nil
 			searchForm.OnValueChange = function(self, value)
+
+				if (value != "") then
+					if not clearForm then
+						clearForm = vgui.Create("DImageButton", self)
+						clearForm:Dock(RIGHT)
+						clearForm:SetSize(20, 20)
+						clearForm:SetImage("icon16/cancel.png")
+		
+						function clearForm:DoClick()
+							searchForm:SetValue("")
+							self:Remove()
+							self = nil
+						end
+					end
+				elseif clearForm and clearForm:IsValid() then
+					clearForm:Remove()
+					clearForm = nil
+				end
+
+				
 				local found = false
 				for k, row in pairs(formRows) do
 					found = false
@@ -307,6 +517,8 @@ function CreateSettingsMenu()
 			if (self.searchTerm) then
 				searchForm:SetValue(self.searchTerm)
 			end
+
+			
 
 			
 			local resNode = vgui.Create("DButton", frame)
@@ -382,6 +594,8 @@ function CreateSettingsMenu()
 	for nodeName, nodeInfo in SortedPairs(ConVar_Tbl) do
 		tree:CreateNode(nodeName, nodeInfo)
 	end
+
+	
 end
 
 

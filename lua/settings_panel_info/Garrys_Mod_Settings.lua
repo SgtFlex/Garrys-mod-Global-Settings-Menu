@@ -1,5 +1,5 @@
 return {
-    name = "Garrys Mod Settings",
+    name = "Garrys Mod",
     icon = "games/16/garrysmod.png",
     subtree = {
         ["AI Settings"] = {
@@ -60,7 +60,7 @@ return {
         },
         ["Tools"] = {
             subtree = {
-                ["Phys Gun"] = {
+                ["Physics Gun"] = {
                     controls = {
                         ["Time to Arrive"] = {
                             convar = "physgun_timeToArrive",

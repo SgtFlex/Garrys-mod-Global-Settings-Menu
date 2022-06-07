@@ -8,7 +8,9 @@ for _, file in pairs(addon_settings) do
     local name = tbl.name or fileName
     ConVar_Tbl[name] = tbl
 end
-PrintTable(ConVar_Tbl)
+
+CreateClientConVar("gsm_search_controls", 1, true, false, "Searches controls in GSM")
+CreateClientConVar("gsm_search_tags", 1, true, false, "Searches controls in GSM")
 
 --Keep in shared I think..
 function SetupDefaultConvars(tbl_nodes)
@@ -21,7 +23,9 @@ function SetupDefaultConvars(tbl_nodes)
                     if control["client"]!=true then
                         CreateConVar(control["convar"], control["default"], bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), control["desc"], min, max)
                     else
-                        CreateClientConVar(control["convar"], control["default"], true, false, control["desc"], min, max)
+                        if CLIENT then
+                            CreateClientConVar(control["convar"], control["default"], true, false, control["desc"], min, max)
+                        end
                     end
                 end
             end
@@ -36,19 +40,18 @@ SetupDefaultConvars(ConVar_Tbl)
 
 local synonyms = {
     ["global_settings_menu"] = true,
-    ["global settings menu"] = true,
     ["globalsettingsmenu"] = true,
     ["gsm"] = true,
 }
 
 if CLIENT then
     for name, _ in pairs(synonyms) do
-        concommand.Add(name, function(ply)
-            CreateSettingsMenu()
+        concommand.Add(name, function(ply, cmd, args, argStr)
+            CreateSettingsMenu(argStr)
         end, nil, "Opens Global Settings Menu")
 
-        concommand.Add("!"..name, function(ply)
-            CreateSettingsMenu()
+        concommand.Add("!"..name, function(ply, cmd, args, argStr)
+            CreateSettingsMenu(argStr)
         end, nil, "Opens Global Settings Menu")
     end
 end
@@ -62,9 +65,10 @@ if SERVER then
 
     hook.Add("PlayerSay", "settings_panel", function(sender, text, teamChat)
         if (string.StartWith(text, "!")==false) then return end
-        local t = string.lower(string.sub(text, 2))
-        if (synonyms[t]==true) then
-            sender:ConCommand("gsm")
+        local w1 = string.lower(string.sub(text, 2, 4))
+        local w2 = string.lower(string.sub(text, 6))
+        if (synonyms[w1]==true) then
+            sender:ConCommand("gsm".." "..w2)
             return ""
         end
     end)
