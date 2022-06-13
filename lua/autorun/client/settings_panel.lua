@@ -1,6 +1,7 @@
 local allInfo = {}
 local main = nil
 local search = nil
+local ColorTheme = Color(75, 85, 150, 150)
 function CreateSettingsMenu(searchText)
 	if main and main:IsValid() then 
 		main:Show()
@@ -13,7 +14,7 @@ function CreateSettingsMenu(searchText)
 	main:SetSize(700, 700)
 	main:DockPadding(10, 30, 10, 10)
 	main:SetSizable(true)
-	main:SetTitle( "Flex's Settings Panel" ) 
+	main:SetTitle( "[GSM] Global Settings Menu" ) 
 	main:SetVisible( true ) 
 	main:SetDraggable( true ) 
 	main:ShowCloseButton( true ) 
@@ -22,6 +23,11 @@ function CreateSettingsMenu(searchText)
 	main.btnMinim:SetDisabled(false)
 	function main.btnMinim:DoClick()
 		main:Hide()
+	end
+
+	function main:Paint(w, h)
+		surface.SetDrawColor(ColorTheme)
+		surface.DrawRect(0, 0, w, h)
 	end
 
 	main.btnMaxim:SetDisabled(false)
@@ -47,10 +53,10 @@ function CreateSettingsMenu(searchText)
 	left:SetSizable(true)
 	left:SetDraggable(false)
 	left:ShowCloseButton(false)
-	function left:Paint(w, h)
-		surface.SetDrawColor(200,200,200,255)
-		surface.DrawRect(0, 0, w, h)
-	end
+	-- function left:Paint(w, h)
+	-- 	surface.SetDrawColor(ColorTheme)
+	-- 	surface.DrawRect(0, 0, w, h)
+	-- end
 	left:SetTitle("Settings Navigation")
 
 	local trees = {}
@@ -238,6 +244,10 @@ function CreateSettingsMenu(searchText)
 	local tree = vgui.Create("DTree", DHoriz)
 	table.insert(trees, tree)
 	tree:Dock(FILL)
+	-- function tree:Paint(w, h)
+	-- 	surface.SetDrawColor(20, 30, 120, 150)
+	-- 	surface.DrawRect(0, 0, w, h)
+	-- end
 	tree:SetSize(500,0)
 	tree.PaintOver = function(self, x, y)
 		self:SizeToChildren()
@@ -330,7 +340,7 @@ function CreateSettingsMenu(searchText)
 					resButton:SetIcon("icon16/arrow_rotate_clockwise.png")
 					resButton:SetToolTip("Resets this setting to default.")
 					resButton.m_Image:Dock(FILL)
-					resButton:DockMargin(0, 0, 20, 0)
+					resButton:DockMargin(0, 0, 10, 0)
 
 					
 
@@ -409,6 +419,9 @@ function CreateSettingsMenu(searchText)
 					item:SetValue(GetConVar(controlInfo.convar):GetFloat())
 					item:SetConVar(controlInfo.convar) 
 				end
+				if (controlInfo.config) then
+					file.Write(controlInfo.config, controlName.." = "..item:GetValue())
+				end
 				if (controlInfo.default and (item:GetValue() == controlInfo.default or (item.GetChecked and (item:GetChecked() and 1 or 0) == controlInfo.default))) then resButton:SetUsable(false) end
 				if (controlInfo.panel) then
 					for k, v in pairs(controlInfo.panel) do --If things like OnChange or OnValueChange are provided, change it to the value provided
@@ -426,7 +439,7 @@ function CreateSettingsMenu(searchText)
 						item[k] = function(self, value)
 							local decimals = (controlInfo.panel and controlInfo.panel.decimals) or 0
 							if (isbool(value)) then value = (value and 1) or 0 end
-							if (math.Round(value, decimals) != controlInfo.default) then
+							if value and (math.Round(value, decimals) != controlInfo.default) then
 								resButton:SetUsable(true)
 							else
 								resButton:SetUsable(false)
